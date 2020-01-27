@@ -22,8 +22,8 @@ from botocore.exceptions import ClientError, ProfileNotFound
 +
 + Dependencies:
 +
-+       Python panda module
-+       Python boto3 and botocore modules
++       Python Panda module
++       Python Boto3 and botocore modules
 +
 +------------------------------------------------------------------------
 
@@ -79,6 +79,20 @@ def get_ec2_status(response):
         'InstanceId': inst_ids,
         'AZ': av_zones,
         'State': state_names
+    })
+
+def get_nat_status(response):
+    ''' NAT Instances '''
+    nat_ids, nat_states, vpc_ids = [], [], []
+    for nat in response['NatGateways']:
+        nat_ids.append(nat['NatGatewayId'])
+        nat_states.append(nat['State'])
+        vpc_ids.append(nat['VpcId'])
+
+    return pd.DataFrame({
+        'NatgatewayId': nat_ids,
+        'State': nat_states,
+        'VpcId': vpc_ids
     })
 
 def get_elbv1_status(response):
@@ -210,6 +224,20 @@ def main():
             this.fo.write('\n\n*** {:3} EC2 Instances found in: {} ***\n\n'.format(ec2_cnt, reg.upper()))
             this.fo.write(str(ec2_df))
         total_resource_cnt += ec2_cnt
+
+        # Check for NAT instances
+
+        try:
+            response = conn.describe_nat_gateways()
+        except ClientError as e:
+            fatal(e)
+        nat_df = get_nat_status(response)
+        nat_cnt = len(nat_df.index)
+        print('{:3} NAT Instances'.format(nat_cnt))
+        if nat_cnt:
+            this.fo.write('\n\n*** {:3} NAT Instances found in: {} ***\n\n'.format(nat_cnt, reg.upper()))
+            this.fo.write(str(nat_df))
+        total_resource_cnt += nat_cnt
 
         # Check for ELB v1 Instances
 
